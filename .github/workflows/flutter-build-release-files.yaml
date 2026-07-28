@@ -1,63 +1,59 @@
-name: Build Flutter APK's and iPA files
+name: Build Flutter APKs and IPA files
 
 on:
   workflow_dispatch:
-  push:
-    tags:
-      - '*'
 
 jobs:
   build:
     runs-on: macos-latest
+
     steps:
-      - uses: actions/checkout@v3
-      - uses: subosito/flutter-action@v2
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
         with:
-          channel: "stable"
-          architecture: x64
-          flutter-version: '3.32.5'
+          channel: stable
 
       - name: Setup Java
-        continue-on-error: true
-        uses: actions/setup-java@v2
+        uses: actions/setup-java@v4
         with:
-          distribution: 'zulu'
+          distribution: zulu
           java-version: '17'
 
-      - name: Run flutter doctor
+      - name: Flutter Doctor
         run: flutter doctor -v
 
-      - name: Install Dependencies
-        run: |
-          flutter pub get
+      - name: Get Dependencies
+        run: flutter pub get
 
-      - name: Build APK
-        run: |
-          flutter build apk --release --build-number=4
-          flutter build apk --release --split-per-abi --target-platform=android-arm64 --build-number=3
-          flutter build apk --release --split-per-abi --target-platform=android-arm --build-number=2
-          flutter build apk --release --split-per-abi --target-platform=android-x64 --build-number=1
+      - name: Build Universal APK
+        run: flutter build apk --release
 
-      - name: Build iPA
-        run: |
-          flutter build ios --release --no-codesign
-          cd build/ios/iphoneos
-          mkdir Payload
-          cd Payload
-          ln -s ../Runner.app
-          cd ..
-          zip -r Neumorphic-Calculator-${GITHUB_REF#refs/*/}.ipa Payload
+      - name: Build Split APKs
+        run: flutter build apk --release --split-per-abi
 
-      - name: Rename APK Files
-        run: |
-          cd build/app/outputs/flutter-apk
-          mv app-armeabi-v7a-release.apk Neumorphic-Calculator-${GITHUB_REF_NAME}-armeabi-v7a.apk
-          mv app-arm64-v8a-release.apk Neumorphic-Calculator-${GITHUB_REF_NAME}-arm64-v8a.apk
-          mv app-x86_64-release.apk Neumorphic-Calculator-${GITHUB_REF_NAME}-x86_64.apk
-          mv app-release.apk  Neumorphic-Calculator-${GITHUB_REF_NAME}-universal.apk
+      - name: Build IPA
+        continue-on-error: true
+        run: flutter build ipa --release --no-codesign
 
-      - name: Create Release
-        uses: ncipollo/release-action@v1.13.0
+      - name: Upload Universal APK
+        uses: actions/upload-artifact@v4
         with:
-          artifacts: "build/app/outputs/flutter-apk/*.apk,build/ios/iphoneos/*.ipa"
-          allowUpdates: true
+          name: universal-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
+
+      - name: Upload Split APKs
+        uses: actions/upload-artifact@v4
+        with:
+          name: split-apks
+          path: build/app/outputs/flutter-apk/*.apk
+
+      - name: Upload IPA
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-ipa
+          path: build/ios/ipa/*.ipa
+          if-no-files-found: ignore
