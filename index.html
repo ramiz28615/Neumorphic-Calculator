@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="theme-color" content="#0b0b10" />
+  <title>Wan Studio — Hugging Face Video</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar" id="sidebar">
+      <div class="brand"><div class="logo">W</div><div><b>Wan Studio</b><span>Hugging Face</span></div></div>
+      <button class="new-chat" id="newChat">＋ Yeni üretim</button>
+      <div class="side-title">MODEL</div>
+      <div class="model-card">
+        <div class="dot" id="statusDot"></div>
+        <div class="model-text"><b id="modelShort">NSFW_Wan_1.3b-bucket</b><small id="modelStatus">Durum kontrol edilmedi</small></div>
+      </div>
+      <div class="side-title">GEÇMİŞ</div>
+      <div id="history" class="history"></div>
+      <div class="sidebar-footer">Token hiçbir dosyaya yazılmaz.<br/>Bu sekme kapanınca silinir.</div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <button class="icon-btn menu-btn" id="menuBtn">☰</button>
+        <div><b>Video üretim stüdyosu</b><span id="pipelineLabel">Model analiz ediliyor…</span></div>
+        <button class="icon-btn" id="settingsBtn">⚙</button>
+      </header>
+
+      <section class="content" id="content">
+        <div class="hero" id="hero">
+          <div class="hero-orb">✦</div>
+          <h1>Ne üretmek istersin?</h1>
+          <p>Prompt yaz, istersen referans görsel ekle. Model destekliyorsa video doğrudan burada oluşturulur.</p>
+          <div class="chips">
+            <button data-prompt="Cinematic slow-motion city scene at night, volumetric lighting, realistic camera movement">Sinematik şehir</button>
+            <button data-prompt="A dramatic ocean storm at sunset, cinematic camera, realistic waves, high detail">Fırtınalı okyanus</button>
+            <button data-prompt="Futuristic neon vehicle moving through a rainy cyberpunk street, cinematic tracking shot">Cyberpunk</button>
+          </div>
+        </div>
+        <div id="messages" class="messages"></div>
+      </section>
+
+      <section class="composer-wrap">
+        <div id="filePreview" class="file-preview hidden"></div>
+        <div class="composer">
+          <label class="attach" title="Görsel ekle">＋<input id="fileInput" type="file" accept="image/*" hidden /></label>
+          <textarea id="prompt" rows="1" placeholder="Videonu tarif et…"></textarea>
+          <button id="generateBtn" class="generate">➤</button>
+        </div>
+        <div class="composer-meta"><span id="modeBadge">Text → Video</span><span>Enter: gönder · Shift+Enter: satır</span></div>
+      </section>
+    </main>
+  </div>
+
+  <div class="modal hidden" id="settingsModal">
+    <div class="modal-card">
+      <div class="modal-head"><h2>Bağlantı ayarları</h2><button class="icon-btn" id="closeSettings">✕</button></div>
+      <label>Hugging Face Access Token</label>
+      <input id="tokenInput" type="password" placeholder="hf_..." autocomplete="off" />
+      <small>Güvenlik için token source code'a kaydedilmez; yalnızca sessionStorage'da tutulur.</small>
+      <label>Model ID</label>
+      <input id="modelInput" value="ramiz282828/NSFW_Wan_1.3b-bucket" />
+      <label>Özel Inference Endpoint URL <em>(opsiyonel)</em></label>
+      <input id="endpointInput" placeholder="https://xxxxx.endpoints.huggingface.cloud" />
+      <label>Provider</label>
+      <select id="providerInput">
+        <option value="auto">Auto</option><option value="fal-ai">fal-ai</option><option value="replicate">replicate</option><option value="novita">novita</option><option value="together">together</option><option value="wavespeed">wavespeed</option><option value="hf-inference">hf-inference</option>
+      </select>
+      <div class="modal-actions"><button id="checkBtn" class="secondary">Modeli kontrol et</button><button id="saveSettings" class="primary">Kaydet</button></div>
+      <div id="checkResult" class="check-result"></div>
+    </div>
+  </div>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
