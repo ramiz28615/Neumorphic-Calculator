@@ -40,22 +40,52 @@ async function checkModel(showResult=true){
   $("#modelStatus").textContent="Kontrol ediliyor…";$("#statusDot").className="dot";
   if(showResult) $("#checkResult").innerHTML="Model bilgisi alınıyor…";
   try{
-    const r=await fetch(`https://huggingface.co/api/models/${encodeURIComponent(state.model)}?expand[]=pipeline_tag&expand[]=inferenceProviderMapping`);
-    if(!r.ok) throw new Error(`Hub API ${r.status}`);
-    const info=await r.json();
-    state.pipeline=info.pipeline_tag||"bilinmiyor";
-    const mapping=info.inferenceProviderMapping||{};state.providers=Object.keys(mapping).filter(k=>mapping[k]?.status==="live" || mapping[k]);
-    const live=state.providers.length>0 || !!state.endpoint;
-    $("#pipelineLabel").textContent=`${state.pipeline} · ${state.providers.length?state.providers.join(", "):"provider bulunamadı"}`;
-    $("#modelStatus").textContent=live?"API bağlantısı kullanılabilir":"Hub modeli bulundu · provider yok";
-    $("#statusDot").className=`dot ${live?"good":"bad"}`;
-    if(showResult) $("#checkResult").innerHTML=`<b>Pipeline:</b> ${escapeHTML(state.pipeline)}<br><b>Inference provider:</b> ${state.providers.length?escapeHTML(state.providers.join(", ")):"Yok / yayınlanmamış"}${state.endpoint?"<br><b>Özel endpoint:</b> ayarlı":""}`;
-    return info;
+    const modelUrl = "https://huggingface.co/api/models/" + state.model;
+    const basicRes = await fetch(modelUrl);
+    if(!basicRes.ok) throw new Error(`Hub API ${basicRes.status}`);
+    const basic = await basicRes.json();
+
+    state.pipeline = basic.pipeline_tag || basic.tags?.find(t=>[
+      "text-to-video","image-to-video","text-to-image","image-to-image"
+    ].includes(t)) || "bilinmiyor";
+
+    let mapping = {};
+    try{
+      const providerRes = await fetch(modelUrl + "?expand=inferenceProviderMapping");
+      if(providerRes.ok){
+        const providerInfo = await providerRes.json();
+        mapping = providerInfo.inferenceProviderMapping || {};
+      }
+    }catch(_){}
+
+    state.providers = Object.entries(mapping)
+      .filter(([,v])=>!v || v.status==="live" || v.status==="staging")
+      .map(([k])=>k);
+
+    const live = state.providers.length>0 || !!state.endpoint;
+    $("#pipelineLabel").textContent = `${state.pipeline} · ${state.providers.length?state.providers.join(", "):"provider bulunamadı"}`;
+    $("#modelStatus").textContent = live ? "API bağlantısı kullanılabilir" : "Model bulundu · serverless provider yok";
+    $("#statusDot").className = `dot ${live?"good":"bad"}`;
+
+    if(showResult){
+      $("#checkResult").innerHTML =
+        `<b>Model:</b> ${escapeHTML(state.model)}<br>`+
+        `<b>Pipeline:</b> ${escapeHTML(state.pipeline)}<br>`+
+        `<b>Inference provider:</b> ${state.providers.length?escapeHTML(state.providers.join(", ")):"Yok"}`+
+        (state.endpoint?"<br><b>Özel endpoint:</b> ayarlı":"")+
+        (!state.providers.length && !state.endpoint
+          ? "<br><br><b>Not:</b> Model Hub üzerinde mevcut, fakat Hugging Face serverless Inference Provider tarafından sunulmuyor. Üretim için özel Inference Endpoint gerekir."
+          : "");
+    }
+    return basic;
   }catch(e){
-    $("#pipelineLabel").textContent="Model kontrolü başarısız";$("#modelStatus").textContent="Model/API bulunamadı";$("#statusDot").className="dot bad";if(showResult)$("#checkResult").textContent=`Hata: ${e.message}`;return null;
+    $("#pipelineLabel").textContent="Model kontrolü başarısız";
+    $("#modelStatus").textContent="Model/API bulunamadı";
+    $("#statusDot").className="dot bad";
+    if(showResult) $("#checkResult").textContent=`Hata: ${e.message}`;
+    return null;
   }
 }
-
 async function generate(){
   const prompt=$("#prompt").value.trim();if(!prompt||busy)return;
   if(!state.token){$("#settingsModal").classList.remove("hidden");toast("Önce Hugging Face token'ını gir.");return;}
