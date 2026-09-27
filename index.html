@@ -33,7 +33,7 @@
         <div class="hero" id="hero">
           <div class="hero-orb">✦</div>
           <h1>Ne üretmek istersin?</h1>
-          <p>Prompt yaz, istersen referans görsel ekle. Model destekliyorsa video doğrudan burada oluşturulur.</p>
+          <p>Prompt yaz, istersen referans görsel ekle. Text-to-video için resmi Wan modeli kullanılır; görsel eklersen image-to-video moduna geçer.</p>
           <div class="chips">
             <button data-prompt="Cinematic slow-motion city scene at night, volumetric lighting, realistic camera movement">Sinematik şehir</button>
             <button data-prompt="A dramatic ocean storm at sunset, cinematic camera, realistic waves, high detail">Fırtınalı okyanus</button>
@@ -62,12 +62,12 @@
       <input id="tokenInput" type="password" placeholder="hf_..." autocomplete="off" />
       <small>Güvenlik için token source code'a kaydedilmez; yalnızca sessionStorage'da tutulur.</small>
       <label>Model ID</label>
-      <input id="modelInput" value="ramiz282828/NSFW_Wan_1.3b-bucket" />
+      <input id="modelInput" value="Wan-AI/Wan2.1-T2V-1.3B" />
       <label>Özel Inference Endpoint URL <em>(opsiyonel)</em></label>
       <input id="endpointInput" placeholder="https://xxxxx.endpoints.huggingface.cloud" />
       <label>Provider</label>
       <select id="providerInput">
-        <option value="auto">Auto</option><option value="fal-ai">fal-ai</option><option value="replicate">replicate</option><option value="novita">novita</option><option value="together">together</option><option value="wavespeed">wavespeed</option><option value="hf-inference">hf-inference</option>
+        <option value="fal-ai" selected>fal-ai</option><option value="auto">Auto</option><option value="replicate">replicate</option><option value="novita">novita</option><option value="together">together</option><option value="wavespeed">wavespeed</option><option value="hf-inference">hf-inference</option>
       </select>
       <div class="modal-actions"><button id="checkBtn" class="secondary">Modeli kontrol et</button><button id="saveSettings" class="primary">Kaydet</button></div>
       <div id="checkResult" class="check-result"></div>
