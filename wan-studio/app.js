@@ -1,7 +1,8 @@
 import { InferenceClient } from "https://esm.sh/@huggingface/inference@4";
 
 const $ = (s) => document.querySelector(s);
-const MODEL_DEFAULT = "ramiz282828/NSFW_Wan_1.3b-bucket";
+const MODEL_DEFAULT = "Wan-AI/Wan2.1-T2V-1.3B";
+const IMAGE_MODEL_DEFAULT = "Wan-AI/Wan2.1-I2V-14B-720P";
 let selectedFile = null;
 let busy = false;
 
@@ -9,7 +10,7 @@ const state = {
   token: sessionStorage.getItem("hf_token") || "",
   model: localStorage.getItem("hf_model") || MODEL_DEFAULT,
   endpoint: localStorage.getItem("hf_endpoint") || "",
-  provider: localStorage.getItem("hf_provider") || "auto",
+  provider: localStorage.getItem("hf_provider") || "fal-ai",
   pipeline: "text-to-video",
   providers: [],
 };
@@ -41,7 +42,8 @@ async function checkModel(showResult=true){
   if(showResult) $("#checkResult").innerHTML="Model bilgisi alınıyor…";
   try{
     const modelUrl = "https://huggingface.co/api/models/" + state.model;
-    const basicRes = await fetch(modelUrl);
+    const headers = state.token ? {Authorization: "Bearer " + state.token} : {};
+    const basicRes = await fetch(modelUrl,{headers});
     if(!basicRes.ok) throw new Error(`Hub API ${basicRes.status}`);
     const basic = await basicRes.json();
 
@@ -51,7 +53,7 @@ async function checkModel(showResult=true){
 
     let mapping = {};
     try{
-      const providerRes = await fetch(modelUrl + "?expand=inferenceProviderMapping");
+      const providerRes = await fetch(modelUrl + "?expand=inferenceProviderMapping",{headers});
       if(providerRes.ok){
         const providerInfo = await providerRes.json();
         mapping = providerInfo.inferenceProviderMapping || {};
@@ -87,33 +89,67 @@ async function checkModel(showResult=true){
   }
 }
 async function generate(){
-  const prompt=$("#prompt").value.trim();if(!prompt||busy)return;
-  if(!state.token){$("#settingsModal").classList.remove("hidden");toast("Önce Hugging Face token'ını gir.");return;}
-  busy=true;$("#generateBtn").disabled=true;
+  const prompt=$("#prompt").value.trim();
+  if(!prompt||busy)return;
+  if(!state.token){
+    $("#settingsModal").classList.remove("hidden");
+    toast("Önce Hugging Face token'ını gir.");
+    return;
+  }
+
+  busy=true;
+  $("#generateBtn").disabled=true;
   addMessage("user",`${escapeHTML(prompt)}${selectedFile?`<div style="color:#999;font-size:12px;margin-top:7px">📎 ${escapeHTML(selectedFile.name)}</div>`:""}`);
   addHistory(prompt);
-  const bubble=addMessage("assistant",`<span class="loader"></span> Video oluşturuluyor…`);
+  const bubble=addMessage("assistant",`<span class="loader"></span> Video oluşturuluyor… Bu işlem biraz sürebilir.`);
+
   try{
-    const client = state.endpoint
-      ? new InferenceClient(state.token,{endpointUrl:state.endpoint.replace(/\/$/,"")})
-      : new InferenceClient(state.token);
-    const common={model:state.endpoint?undefined:state.model,inputs:prompt,provider:state.endpoint?undefined:state.provider};
+    const client = new InferenceClient(state.token);
     let out;
+
     if(selectedFile){
-      out=await client.imageTextToVideo({...common,image:selectedFile});
+      out = await client.imageToVideo({
+        model: IMAGE_MODEL_DEFAULT,
+        data: selectedFile,
+        inputs: prompt,
+        provider: state.provider || "fal-ai"
+      });
     }else{
-      out=await client.textToVideo(common);
+      out = await client.textToVideo({
+        model: state.model || MODEL_DEFAULT,
+        inputs: prompt,
+        provider: state.provider || "fal-ai"
+      });
     }
-    const blob=out instanceof Blob?out:(out?.video instanceof Blob?out.video:new Blob([out],{type:"video/mp4"}));
+
+    let blob = null;
+    if(out instanceof Blob) blob = out;
+    else if(out?.video instanceof Blob) blob = out.video;
+    else if(out?.data instanceof Blob) blob = out.data;
+    else if(out?.video?.url){
+      const rr=await fetch(out.video.url);
+      blob=await rr.blob();
+    }else if(out?.url){
+      const rr=await fetch(out.url);
+      blob=await rr.blob();
+    }
+
+    if(!blob) throw new Error("API video verisi döndürmedi. Model/provider yanıtı beklenen formatta değil.");
+
     const url=URL.createObjectURL(blob);
     bubble.innerHTML=`<b>Video hazır.</b><video class="result-video" src="${url}" controls playsinline></video><div class="result-actions"><a href="${url}" download="wan-${Date.now()}.mp4">⬇ Videoyu indir</a></div>`;
-    $("#prompt").value="";autoResize();clearFile();
+    $("#prompt").value="";
+    autoResize();
+    clearFile();
   }catch(e){
     const raw=e?.message||String(e);
-    bubble.innerHTML=`<b>Üretim başarısız.</b><br><span style="color:#aaa">${escapeHTML(raw)}</span><br><br><small>Bu hata çoğunlukla modelin Inference Provider üzerinde yayınlanmaması, provider'ın modeli desteklememesi veya token izninin eksik olması nedeniyle olur. Model için özel Hugging Face Inference Endpoint açtıysan Ayarlar bölümüne URL'sini gir.</small>`;
-  }finally{busy=false;$("#generateBtn").disabled=false;scrollBottom();}
+    bubble.innerHTML=`<b>Üretim başarısız.</b><br><span style="color:#f0a0a0">${escapeHTML(raw)}</span><br><br><small>Varsayılan text-to-video modeli: ${MODEL_DEFAULT}. Provider: ${escapeHTML(state.provider||"fal-ai")}. Tokenında Inference Providers izni olduğundan emin ol.</small>`;
+  }finally{
+    busy=false;
+    $("#generateBtn").disabled=false;
+    scrollBottom();
+  }
 }
-
 function autoResize(){const t=$("#prompt");t.style.height="auto";t.style.height=Math.min(t.scrollHeight,180)+"px";}
 function clearFile(){selectedFile=null;$("#fileInput").value="";$("#filePreview").classList.add("hidden");$("#filePreview").innerHTML="";syncUI();}
 
