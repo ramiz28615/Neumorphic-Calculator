@@ -6,9 +6,23 @@ const IMAGE_MODEL_DEFAULT = "Wan-AI/Wan2.1-I2V-14B-720P";
 let selectedFile = null;
 let busy = false;
 
+const savedModel = localStorage.getItem("hf_model") || "";
+const legacyModels = [
+  "ramiz282828/NSFW_Wan_1.3b-bucket",
+  "NSFW_Wan_1.3b-bucket"
+];
+const safeModel = (!savedModel || legacyModels.some(x => savedModel.includes(x)))
+  ? MODEL_DEFAULT
+  : savedModel;
+
+if (safeModel !== savedModel) {
+  localStorage.setItem("hf_model", safeModel);
+  localStorage.setItem("hf_provider", "fal-ai");
+}
+
 const state = {
   token: sessionStorage.getItem("hf_token") || "",
-  model: localStorage.getItem("hf_model") || MODEL_DEFAULT,
+  model: safeModel,
   endpoint: localStorage.getItem("hf_endpoint") || "",
   provider: localStorage.getItem("hf_provider") || "fal-ai",
   pipeline: "text-to-video",
